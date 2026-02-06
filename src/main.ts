@@ -35,7 +35,7 @@ async function bootstrap() {
   });
 
   // Global prefix
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', { exclude: ['/'] });
 
   // Cookie Parser
   // Note: We need to import cookie-parser. Using require to avoid import errors if types are missing initially.
