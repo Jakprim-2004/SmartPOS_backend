@@ -55,24 +55,4 @@ async function bootstrap() {
   console.log(`🚀 Backend is running on: http://localhost:${port}/api`);
 }
 
-// Cluster Logic for Auto-Restart
-if ((cluster as any).isPrimary || (cluster as any).isMaster) {
-  console.log(`Primary ${process.pid} is running`);
-
-  // Fork initial worker
-  (cluster as any).fork();
-
-  // Handle worker death
-  (cluster as any).on('exit', (worker: any, code: any, signal: any) => {
-    console.log(`Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}).`);
-    console.log('Restarting server in 10 seconds...');
-
-    setTimeout(() => {
-      console.log('Spawning new worker...');
-      (cluster as any).fork();
-    }, 10000); // 10 seconds delay
-  });
-} else {
-  // Workers invoke bootstrap
-  bootstrap();
-}
+bootstrap();
