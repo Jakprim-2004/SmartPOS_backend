@@ -15,11 +15,13 @@ export class AuthController {
     async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) response: Response) {
         const result = await this.authService.login(loginDto);
 
+        const isProduction = process.env.NODE_ENV === 'production' || result.access_token.length > 0; // Simple check
+
         // Set HttpOnly Cookie
         response.cookie('access_token', result.access_token, {
             httpOnly: true,
-            secure: false, // process.env.NODE_ENV === 'production', // FIXME: Revert to env check in production
-            sameSite: 'lax',
+            secure: true, // Must be true for SameSite: 'none'
+            sameSite: 'none', // Required for cross-site cookies
             path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
@@ -37,8 +39,8 @@ export class AuthController {
         // Clear specific path cookie
         response.clearCookie('access_token', {
             httpOnly: true,
-            secure: false, // process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
             path: '/',
         });
         // Clear potential default path cookie (legacy)
