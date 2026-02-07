@@ -13,18 +13,30 @@ export class CouponsController {
     constructor(private readonly couponsService: CouponsService) { }
 
     @Get()
-    @UseGuards(OptionalJwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     findAll(
-        @Query() paginationDto: PaginationDto,
         @Query('search') search?: string,
-        @Query('shopId') queryShopId?: string,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+        @Query('page') page?: string,
         @Req() req?: any
     ) {
-        // Prioritize authenticated user's shopId (Admin/Staff), then query param (Public/Member)
-        const userShopId = req?.user?.shopId;
-        const shopId = userShopId || queryShopId;
-
+        const shopId = req.user.shopId;
         if (!shopId) throw new HttpException('Shop ID is required', HttpStatus.BAD_REQUEST);
+
+        const paginationDto: PaginationDto = {};
+        const limitNum = limit ? parseInt(limit, 10) : undefined;
+        let offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+
+        if (offsetNum === undefined && page && limitNum !== undefined) {
+            const pageNum = parseInt(page, 10);
+            if (!isNaN(pageNum) && pageNum > 0) {
+                offsetNum = (pageNum - 1) * limitNum;
+            }
+        }
+
+        if (limitNum !== undefined) paginationDto.limit = limitNum;
+        if (offsetNum !== undefined) paginationDto.offset = offsetNum;
 
         return this.couponsService.findPaginated(
             paginationDto,

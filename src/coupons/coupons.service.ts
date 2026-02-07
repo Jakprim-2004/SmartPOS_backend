@@ -14,6 +14,7 @@ export class CouponsService {
         shopId?: string
     ): Promise<{ data: Coupon[], total: number, limit: number, offset: number, nextPage: number | null }> {
         const { limit = 10, offset = 0 } = paginationDto;
+        console.log(`[CouponsService] findPaginated - Shop: ${shopId}, Limit: ${limit}, Offset: ${offset}, Search: ${search}`);
         const from = offset;
         const to = offset + limit - 1;
 
