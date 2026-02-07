@@ -37,6 +37,7 @@ export class ProductsService {
         stockStatus?: string
     ): Promise<{ data: Product[], total: number, limit: number, offset: number, nextPage: number | null }> {
         const { limit = 10, offset = 0 } = paginationDto;
+        console.log(`ProductsService.findPaginated: limit=${limit}, offset=${offset}, stockStatus=${stockStatus}, shopId=${shopId}`);
         const from = offset;
         const to = offset + limit - 1;
 
@@ -218,27 +219,71 @@ export class ProductsService {
     }
 
     async delete(id: number, userId?: number): Promise<boolean> {
-        // Get product info before delete for logging
+        // 1. Get product info and images before delete
         const { data: product } = await this.supabaseService.getClient()
             .from('products')
-            .select('name')
+            .select('name, image_url, product_images(url)')
             .eq('id', id)
             .single();
 
+        // 2. Delete from database
         const { error } = await this.supabaseService
             .getClient()
             .from('products')
             .delete()
             .eq('id', id);
 
-        if (!error && userId && product) {
-            await this.staffLogsService.createLog(userId, 'DELETE_PRODUCT', {
-                productId: id,
-                productName: product.name
-            });
+        if (!error) {
+            // 3. Delete images from storage if exists
+            if (product) {
+                const imagesToDelete: string[] = [];
+                if (product.image_url) imagesToDelete.push(product.image_url);
+
+                // Add additional images
+                const additionalImages = (product as any).product_images;
+                if (additionalImages && Array.isArray(additionalImages)) {
+                    additionalImages.forEach((img: any) => {
+                        if (img.url) imagesToDelete.push(img.url);
+                    });
+                }
+
+                if (imagesToDelete.length > 0) {
+                    await this.deleteImagesFromStorage(imagesToDelete);
+                }
+
+                // Log
+                if (userId) {
+                    await this.staffLogsService.createLog(userId, 'DELETE_PRODUCT', {
+                        productId: id,
+                        productName: product.name
+                    });
+                }
+            }
         }
 
         return !error;
+    }
+
+    private async deleteImagesFromStorage(urls: string[]) {
+        try {
+            const paths = urls.map(url => {
+                // Extract path relative to bucket 'images'
+                // URL format: .../storage/v1/object/public/images/<path>
+                const parts = url.split('/images/');
+                if (parts.length > 1) return parts[1];
+                return null;
+            }).filter(p => p !== null) as string[];
+
+            if (paths.length > 0) {
+                await this.supabaseService.getClient()
+                    .storage
+                    .from('images')
+                    .remove(paths);
+            }
+        } catch (e) {
+            console.error('Failed to delete images from storage:', e);
+            // Don't throw, just log. Deleting the product is the main goal.
+        }
     }
 
     async search(query: string, shopId?: string): Promise<Product[]> {

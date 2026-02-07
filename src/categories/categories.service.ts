@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { StaffLogsService } from '../staff-logs/staff-logs.service';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -10,22 +11,44 @@ export class CategoriesService {
         private readonly staffLogsService: StaffLogsService
     ) { }
 
-    async findAll(shopId?: string) {
+    async findAll(shopId?: string, paginationDto?: PaginationDto) {
+        const { limit, offset } = paginationDto || {};
+        const hasPagination = limit !== undefined && offset !== undefined;
+
         let query = this.supabase.getClient()
             .from('categories')
-            .select('*')
-            .order('name');
+            .select('*', { count: 'exact' });
 
         if (shopId) {
             query = query.eq('shop_id', shopId);
         }
 
-        const { data, error } = await query;
+        if (hasPagination) {
+            // Ensure numbers just in case transform failed
+            const from = Number(offset);
+            const to = Number(offset) + Number(limit) - 1;
+            query = query.range(from, to);
+        }
+
+        const { data, error, count } = await query.order('name');
 
         if (error) {
-            console.error('Categories FindAll Error:', error); // DEBUG ERROR
+            console.error('Categories FindAll Error:', error);
             throw error;
         }
+
+        // If pagination was requested, return paginated structure
+        if (hasPagination) {
+            return {
+                data: data,
+                total: count || 0,
+                limit,
+                offset,
+                nextPage: (count && (offset + limit < count)) ? offset + limit : null
+            };
+        }
+
+        // Otherwise return array (backward compatibility)
         return data;
     }
 

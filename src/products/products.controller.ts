@@ -28,11 +28,13 @@ export class ProductsController {
     @Get()
     @UseGuards(OptionalJwtAuthGuard)
     async findAll(
-        @Query() paginationDto: PaginationDto,
         @Query('search') search?: string,
         @Query('categoryId') categoryId?: string,
         @Query('shopId') queryShopId?: string,
         @Query('stockStatus') stockStatus?: string,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+        @Query('page') page?: string,
         @Req() req?: any
     ) {
         const userShopId = req?.user?.shopId;
@@ -41,6 +43,20 @@ export class ProductsController {
         if (!shopId) {
             throw new HttpException('Shop ID is required', HttpStatus.BAD_REQUEST);
         }
+
+        const paginationDto: PaginationDto = {};
+        const limitNum = limit ? parseInt(limit, 10) : undefined;
+        let offsetNum = offset !== undefined ? parseInt(offset, 10) : undefined;
+
+        if (offsetNum === undefined && page && limitNum !== undefined) {
+            const pageNum = parseInt(page, 10);
+            if (!isNaN(pageNum) && pageNum > 0) {
+                offsetNum = (pageNum - 1) * limitNum;
+            }
+        }
+
+        if (limitNum !== undefined) paginationDto.limit = limitNum;
+        if (offsetNum !== undefined) paginationDto.offset = offsetNum;
 
         // Always use paginated method to ensure consistent response structure { data, total }
         return this.productsService.findPaginated(
