@@ -37,7 +37,6 @@ export class ProductsService {
         stockStatus?: string
     ): Promise<{ data: Product[], total: number, limit: number, offset: number, nextPage: number | null }> {
         const { limit = 10, offset = 0 } = paginationDto;
-        console.log(`ProductsService.findPaginated: limit=${limit}, offset=${offset}, stockStatus=${stockStatus}, shopId=${shopId}`);
         const from = offset;
         const to = offset + limit - 1;
 

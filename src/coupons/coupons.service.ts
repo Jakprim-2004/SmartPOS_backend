@@ -14,7 +14,6 @@ export class CouponsService {
         shopId?: string
     ): Promise<{ data: Coupon[], total: number, limit: number, offset: number, nextPage: number | null }> {
         const { limit = 10, offset = 0 } = paginationDto;
-        console.log(`[CouponsService] findPaginated - Shop: ${shopId}, Limit: ${limit}, Offset: ${offset}, Search: ${search}`);
         const from = offset;
         const to = offset + limit - 1;
 
@@ -53,7 +52,6 @@ export class CouponsService {
     }
 
     async findAll(shopId?: string): Promise<Coupon[]> {
-        console.log(`[CouponsService] findAll called with shopId: ${shopId}`);
         let query = this.supabaseService
             .getClient()
             .from('coupons')
@@ -65,10 +63,8 @@ export class CouponsService {
         }
 
         const { data, error } = await query;
-        console.log(`[CouponsService] query result - Error: ${!!error}, Data: ${data ? data.length + ' items' : 'NULL'}`);
 
         if (error) {
-            console.error('[CouponsService] Supabase Error:', error);
             return [];
         }
         return (data || []).map(item => this.mapToCoupon(item));
@@ -104,7 +100,6 @@ export class CouponsService {
     }
 
     async create(dto: CreateCouponDto, shopId?: string): Promise<Coupon> {
-        console.log(`[CouponsService] Creating coupon code: ${dto.code}, shopId: ${shopId}`);
 
         if (!dto.code) {
             throw new HttpException('กรุณาระบุรหัสคูปอง (Code is required)', HttpStatus.BAD_REQUEST);
@@ -133,7 +128,6 @@ export class CouponsService {
             .single();
 
         if (error) {
-            console.error('[CouponsService] Create Error:', error);
             if (error.code === '23505') {
                 throw new HttpException('รหัสคูปองนี้ถูกใช้งานแล้ว', HttpStatus.BAD_REQUEST);
             }
